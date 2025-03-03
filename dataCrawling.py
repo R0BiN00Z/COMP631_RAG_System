@@ -6,8 +6,9 @@ from DrissionPage import ChromiumPage
 class XiaoHongShuSpider:
     def __init__(self):
         self.page = ChromiumPage()
+        self.start_url ="https://www.xiaohongshu.com/explore?channel_id=homefeed.food_v3"
         # self.start_url = "https://www.xiaohongshu.com/explore?channel_id=homefeed.travel_v3"
-        self.start_url = "https://www.xiaohongshu.com/search_result?keyword=%25E6%2594%25BB%25E7%2595%25A5&source=web_explore_feed"
+        # self.start_url = "https://www.xiaohongshu.com/search_result?keyword=%25E6%2594%25BB%25E7%2595%25A5&source=web_explore_feed"
         self.json_file = "xiaohongshu_data.json"
         self.visited_urls, self.results = self.load_existing_data()
 
@@ -60,7 +61,6 @@ class XiaoHongShuSpider:
             close_xpath = '//div[contains(@class, "close-mask-dark")]'
             close_ele = self.page.ele(f'xpath:{close_xpath}')
             if close_ele:
-                print("❌ 关闭帖子弹窗...")
                 close_ele.click()
                 time.sleep(2)
 
@@ -100,7 +100,7 @@ class XiaoHongShuSpider:
         time.sleep(5)
 
         print("🔄 开始滚动页面并解析数据...")
-        self.scroll_down_and_parse(max_scrolls=100)
+        self.scroll_down_and_parse(max_scrolls=2000)
 
         print(f"✅ 爬取完成，最终共 {len(self.results)} 条数据")
 
