@@ -10,8 +10,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 
-# Load the Environment
-load_dotenv()
+load_dotenv()            # Load the Environment
 
 class TextSummarizer:
     """
