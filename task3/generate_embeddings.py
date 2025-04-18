@@ -11,8 +11,7 @@ import torch
 from tenacity import retry, stop_after_attempt, wait_exponential
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+load_dotenv()                # Load environment variables from .env file
 
 def init_pinecone(api_key: str = None):
     if api_key is None:
@@ -117,8 +116,7 @@ def process_merged_data(input_file: str = "merged_data.json",
                 weighted_title = ' '.join([title] * int(title_weight))
                 text = f"{weighted_title} {chunk}"
                 
-                # Generate the embedding
-                embedding = embedder.encode(text)
+                embedding = embedder.encode(text)            # Generate the embedding
                 
                 # Prepare the metadata
                 metadata = {
