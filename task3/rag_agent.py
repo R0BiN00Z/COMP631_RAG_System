@@ -11,7 +11,6 @@ from openai import OpenAI
 from text_summarizer import TextSummarizer
 from googletrans import Translator
 
-# ============= Configuration and Initialization =============
 class Config:
     def __init__(self):
         load_dotenv()
@@ -37,7 +36,6 @@ class Initializer:
         """Initialize text summarizer"""
         return TextSummarizer(api_key=config.gemini_api_key)
 
-# ============= Data Loading and Processing =============
 class DataLoader:
     @staticmethod
     def load_merged_data(file_path: str) -> List[Dict]:
@@ -47,7 +45,6 @@ class DataLoader:
             print(f"Loaded {len(data)} documents")
             return data
 
-# ============= Search Functions =============
 class SearchEngine:
     def __init__(self, index, embedder: TextEmbedder):
         self.index = index
@@ -73,7 +70,6 @@ class SearchEngine:
             })
         return processed_results
 
-# ============= Content Processing =============
 class ContentProcessor:
     def __init__(self, summarizer: TextSummarizer):
         self.summarizer = summarizer
@@ -117,7 +113,7 @@ class ContentProcessor:
         reranked_results = []
         
         for result in sorted(results, key=lambda x: x['score'], reverse=True):
-            if result['title'] not in seen_titles:  # Check title is duplicad or not
+            if result['title'] not in seen_titles:          # Check title is duplicad or not
                 # Calculate the score
                 vector_score = result['score'] * 0.6
                 title_score = self._calculate_keyword_match(result['title'], query) * 0.25
@@ -129,7 +125,7 @@ class ContentProcessor:
                 result['final_score'] = vector_score + title_score + content_score
                 
                 reranked_results.append(result)
-                seen_titles.add(result['title'])  # Adding the title to seened list
+                seen_titles.add(result['title'])            # Adding the title to seened list
         
         return sorted(reranked_results, key=lambda x: x['final_score'], reverse=True)
 
@@ -144,7 +140,6 @@ class ContentProcessor:
         matched_words = sum(1 for word in query_words if word in text_lower)
         return matched_words / len(query_words) if query_words else 0.0
 
-# ============= Query Translation =============
 class QueryTranslator:
     def __init__(self, openai_client: OpenAI):
         self.client = openai_client
@@ -170,7 +165,6 @@ Requirements:
 - DO NOT include time-related information
 - Make the queries natural and search-engine friendly
 - Return the results in JSON format with 'zh' and 'en' keys"""
-
     def _get_gpt_response(self, prompt: str):
         return self.client.chat.completions.create(
             model="gpt-4-0125-preview",
@@ -182,7 +176,6 @@ Requirements:
             response_format={"type": "json_object"}
         )
 
-# ============= Response Generation =============
 class ResponseGenerator:
     def __init__(self, openai_client: OpenAI):
         self.client = openai_client
@@ -216,7 +209,6 @@ Please generate a structured response in English including:
 
 In English!
 use some emojis to make the response more engaging"""
-
     def _format_results(self, results: List[Dict]) -> str:
         formatted = []
         for i, result in enumerate(results, 1):
@@ -238,7 +230,6 @@ use some emojis to make the response more engaging"""
             temperature=0.7
         )
 
-# ============= Main Function =============
 def main():
     parser = argparse.ArgumentParser(description='RAG Agent for Tourism Information')
     parser.add_argument('--query', type=str, required=True, help='Search query')
