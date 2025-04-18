@@ -55,38 +55,30 @@ class TextEmbedder:
             self.model = SentenceTransformer(model_name).to(self.device)
         
         self.tokenizer = self.model.tokenizer
-    
+
+    """
+    Detect the main Language of text
+    Args: text: Input Text
+    Returns: Language Code ('zh' or 'en')
+    """
     def detect_language(self, text: str) -> str:
-        """
-        检测文本的主要语言
-        
-        Args:
-            text: 输入文本
-            
-        Returns:
-            语言代码 ('zh' 或 'en')
-        """
-        # 简单的语言检测
+        # Simple Language Check, If 30% orr more of the text are chinese. then output zh
         chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
-        if chinese_chars / len(text) > 0.3:  # 如果中文字符占比超过30%
+        if chinese_chars / len(text) > 0.3:
             return 'zh'
         return 'en'
-    
-    def split_into_chunks(self, text: str) -> List[str]:
-        """
-        将文本分割成多个块
         
-        Args:
-            text: 输入文本
-            
-        Returns:
-            文本块列表
-        """
-        # 检测语言
+    """
+    Split one text into multiple text chunks 
+    Args: text: Input Text
+    Returns: List of text chunks
+    """
+    def split_into_chunks(self, text: str) -> List[str]:
+        # Detect Language
         lang = self.detect_language(text)
         
         if lang == 'zh':
-            # 中文分词
+            # Chinese
             words = list(jieba.cut(text))
             chunks = []
             current_chunk = []
@@ -96,7 +88,7 @@ class TextEmbedder:
                 if current_length + len(word) > self.chunk_size:
                     if current_chunk:
                         chunks.append(''.join(current_chunk))
-                        # 保留重叠部分
+                        # Keep the Overlayed part
                         overlap = int(self.chunk_overlap / 2)
                         current_chunk = current_chunk[-overlap:] if overlap > 0 else []
                         current_length = sum(len(w) for w in current_chunk)
@@ -108,7 +100,7 @@ class TextEmbedder:
                 chunks.append(''.join(current_chunk))
         
         else:
-            # 英文按空格分割
+            # English: Spliit by space
             words = text.split()
             chunks = []
             current_chunk = []
@@ -118,7 +110,7 @@ class TextEmbedder:
                 if current_length + len(word) + 1 > self.chunk_size:  # +1 for space
                     if current_chunk:
                         chunks.append(' '.join(current_chunk))
-                        # 保留重叠部分
+                        # Keep the Overlayed part
                         overlap = int(self.chunk_overlap / 2)
                         current_chunk = current_chunk[-overlap:] if overlap > 0 else []
                         current_length = sum(len(w) + 1 for w in current_chunk) - 1
@@ -130,31 +122,29 @@ class TextEmbedder:
                 chunks.append(' '.join(current_chunk))
         
         return chunks
-    
+
+    """
+    Generate the embedded text
+    Args:
+        text: Input text
+        return_chunks: Return the chunk info or not
+    Returns:
+        If return_chunks==False, return the encode text
+        If return_chunks==True, return the encode text and chunk information
+    """
     def encode(self, text: str, return_chunks: bool = False) -> Union[np.ndarray, Tuple[np.ndarray, List[Tuple[int, int]]]]:
-        """
-        生成文本的嵌入向量
-        
-        Args:
-            text: 输入文本
-            return_chunks: 是否返回分块信息
-            
-        Returns:
-            如果 return_chunks 为 False，返回嵌入向量
-            如果 return_chunks 为 True，返回 (嵌入向量, 分块信息)
-        """
-        # 检测语言
+        # Detect Language
         language = self.detect_language(text)
         
-        # 分块处理
+        # Split the text into multiple smaller text chunks
         chunks = self.split_into_chunks(text)
         
-        # 生成嵌入向量
+        # Generate embedding in the list
         embeddings = []
         chunk_info = []
         
         for i, chunk in enumerate(chunks):
-            # 将文本转换为模型输入
+            # Tokenize the text
             encoded = self.tokenizer(
                 chunk,
                 padding=True,
@@ -163,39 +153,33 @@ class TextEmbedder:
                 return_tensors="pt"
             ).to(self.device)
             
-            # 生成嵌入向量
             with torch.no_grad():
                 output = self.model(encoded)
                 embedding = output['sentence_embedding'].cpu().numpy()
             
             embeddings.append(embedding)
-            chunk_info.append((0, i))  # 文档索引始终为0，因为我们只处理单个文档
+            chunk_info.append((0, i))  # Will always be 0 since we are processing single file at one time
         
-        # 合并所有块的嵌入向量
+        # Assemble all embedded text together
         final_embedding = np.mean(embeddings, axis=0)
         
         if return_chunks:
             return final_embedding, chunk_info
         return final_embedding
-    
+
+    """
+    Encode the text with metadata
+    Args: texts: List if Dictionary that include text and metadata [{"text": "...", "metadata": {...}}, ...]    
+    Returns: List of dicrionary that include embedded data and metadata
+    """
     def encode_with_metadata(self, texts: List[dict]) -> List[dict]:
-        """
-        对带有元数据的文本进行编码
-        
-        Args:
-            texts: 包含文本和元数据的字典列表
-                  [{"text": "...", "metadata": {...}}, ...]
-                  
-        Returns:
-            包含嵌入向量和元数据的字典列表
-        """
-        # 提取文本
+        # Read the text
         text_list = [item["text"] for item in texts]
         
-        # 生成嵌入向量
+        # Generate the embedding
         embeddings = self.encode(text_list)
         
-        # 合并嵌入向量和元数据
+        # Assemble the embedded data and original data
         results = []
         for i, (text, embedding) in enumerate(zip(texts, embeddings)):
             result = {
@@ -206,82 +190,70 @@ class TextEmbedder:
             results.append(result)
             
         return results
-    
-    def compute_similarity(self, 
-                         query_embedding: np.ndarray,
-                         doc_embeddings: np.ndarray) -> np.ndarray:
-        """
-        计算查询向量和文档向量之间的相似度
-        
-        Args:
-            query_embedding: 查询文本的嵌入向量
-            doc_embeddings: 文档文本的嵌入向量列表
             
-        Returns:
-            相似度分数数组
-        """
-        # 确保维度正确
+    """
+    Calculation the similarties between input query and docs in the embedding file     
+    Args:
+        query_embedding: Input Query's embedding
+        doc_embeddings: Docs in the embedding file       
+    Returns: Similarties Score
+    """
+    def compute_similarity(self, query_embedding: np.ndarray, doc_embeddings: np.ndarray) -> np.ndarray:
+        # Make sure the shape is correct
         if len(query_embedding.shape) == 1:
             query_embedding = query_embedding.reshape(1, -1)
         if len(doc_embeddings.shape) == 1:
             doc_embeddings = doc_embeddings.reshape(1, -1)
             
-        # 使用余弦相似度
+        # Using the cosine Similarties
         similarity_scores = np.dot(doc_embeddings, query_embedding.T).flatten()
         return similarity_scores
-    
-    def save_embeddings(self, 
-                       embeddings: List[dict],
-                       output_file: str):
-        """
-        保存嵌入向量到文件
-        
-        Args:
-            embeddings: 包含嵌入向量和元数据的列表
-            output_file: 输出文件路径
-        """
+
+    """
+    Store the embedded file to local file system
+    Args: 
+        embeddings: List that contain embedding data and original data
+        output_file: Output file path
+    Returns: N/A
+    """
+    def save_embeddings(self, embeddings: List[dict], output_file: str):
         import json
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(embeddings, f, ensure_ascii=False, indent=2)
-            
+           
+    """
+    Load the stred embedding file
+    Args: input_file: Input file path
+    Returns: List that contain embedding data and original data
+    """         
     def load_embeddings(self, input_file: str) -> List[dict]:
-        """
-        从文件加载嵌入向量
-        
-        Args:
-            input_file: 输入文件路径
-            
-        Returns:
-            包含嵌入向量和元数据的列表
-        """
         import json
         with open(input_file, 'r', encoding='utf-8') as f:
             return json.load(f)
 
 def main():
-    # 测试代码
+    # Run the embedding models
     embedder = TextEmbedder(chunk_size=300, chunk_overlap=50)
     
-    # 测试跨语言匹配
+    # List of test query with different languages
     test_texts = [
-        "人工智能是计算机科学的一个分支",  # 中文
-        "Artificial Intelligence is a branch of computer science",  # 英文
-        "AI is transforming the world",  # 英文
-        "AI正在改变世界",  # 中文
-        "机器学习是AI的核心技术",  # 中文
-        "Machine learning is the core technology of AI"  # 英文
-    ]
+        "人工智能是计算机科学的一个分支",
+        "Artificial Intelligence is a branch of computer science",
+        "AI is transforming the world",
+        "AI正在改变世界",
+        "机器学习是AI的核心技术",
+        "Machine learning is the core technology of AI" ]
     
-    # 生成嵌入向量
+    # Generate the final embedding text use for following tasks
     print("\nGenerating embeddings for test texts...")
     embeddings = embedder.encode(test_texts)
     
-    # 测试查询
+    # Demo Query
     queries = [
-        "什么是AI",  # 中文查询
-        "What is AI",  # 英文查询
-        "AI的核心技术",  # 中文查询
-        "core technology of AI"  # 英文查询
+        "什么是AI",  # Chinese demo case
+        "What is AI",  # English demo case
+        "AI的核心技术",  # CHinese demo case
+        "core technology of AI"  # English Demo Case
     ]
     
     print("\nCross-language matching results:")
