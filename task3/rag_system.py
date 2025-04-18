@@ -157,7 +157,7 @@ class RAGSystem:
             output_fields=["title", "content"]
         )
         
-        # 合并结果
+        # Merge Result
         vector_results = []
         for hits in results:
             for hit in hits:
@@ -183,28 +183,28 @@ class RAGSystem:
         return all_results[:top_k]
 
 def main():
-    # 初始化 RAG 系统
+    # Initialize the RAG system
     rag = RAGSystem()
     
-    # 加载预生成的嵌入向量
+    # Load the stored embedding file
     rag.load_embeddings()
     
-    # 索引数据
+    # Index all data
     rag.index_data()
     
-    # 示例搜索
+    # Sample Search
     while True:
-        query = input("\n请输入搜索查询（输入 'quit' 退出）: ")
+        query = input("\nPlease input the content you want to search（Input 'quit' to Quit）: ")
         if query.lower() == 'quit':
             break
             
         results = rag.search(query)
-        print("\n搜索结果:")
+        print("\nSearch Result:")
         for i, result in enumerate(results, 1):
-            print(f"\n{i}. 标题: {result['title']}")
-            print(f"   内容: {result['content'][:200]}...")
+            print(f"\n{i}. Title: {result['title']}")
+            print(f"   Content: {result['content'][:200]}...")
             if 'score' in result:
-                print(f"   相似度得分: {result['score']:.4f}")
+                print(f"    Similarties Score: {result['score']:.4f}")
 
 if __name__ == "__main__":
     main() 
