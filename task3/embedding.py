@@ -10,22 +10,23 @@ from pathlib import Path
 import jieba
 
 class TextEmbedder:
+    """
+    Initialize text embedder
+    Args:
+        model_name: Model name to use
+        batch_size: Batch size for processing
+        chunk_size: Maximum length of each text chunk
+        chunk_overlap: Overlap length between adjacent chunks
+        device: Computing device (cuda/mps/cpu)
+    Return: N/A
+    """
     def __init__(self, 
                  model_name: str = "BAAI/bge-m3",
                  batch_size: int = 32,
                  chunk_size: int = 300,
                  chunk_overlap: int = 50,
                  device: str = None):
-        """
-        Initialize text embedder
-        
-        Args:
-            model_name: Model name to use
-            batch_size: Batch size for processing
-            chunk_size: Maximum length of each text chunk
-            chunk_overlap: Overlap length between adjacent chunks
-            device: Computing device (cuda/mps/cpu)
-        """
+
         self.model_name = model_name
         self.batch_size = batch_size
         self.chunk_size = chunk_size
@@ -44,10 +45,8 @@ class TextEmbedder:
         
         print(f"Loading model {model_name} on {self.device}...")
         try:
-            # First load the model without specifying device
-            self.model = SentenceTransformer(model_name)
-            # Then move it to the appropriate device
-            self.model = self.model.to(self.device)
+            self.model = SentenceTransformer(model_name)        # First load the model without specifying device
+            self.model = self.model.to(self.device)             # Then move it to the appropriate device
         except Exception as e:
             print(f"Error loading model: {str(e)}")
             # Fallback to CPU if there's an error
@@ -133,11 +132,8 @@ class TextEmbedder:
         If return_chunks==True, return the encode text and chunk information
     """
     def encode(self, text: str, return_chunks: bool = False) -> Union[np.ndarray, Tuple[np.ndarray, List[Tuple[int, int]]]]:
-        # Detect Language
-        language = self.detect_language(text)
-        
-        # Split the text into multiple smaller text chunks
-        chunks = self.split_into_chunks(text)
+        language = self.detect_language(text)            # Detect Language
+        chunks = self.split_into_chunks(text)            # Split the text into multiple smaller text chunks
         
         # Generate embedding in the list
         embeddings = []
@@ -158,10 +154,9 @@ class TextEmbedder:
                 embedding = output['sentence_embedding'].cpu().numpy()
             
             embeddings.append(embedding)
-            chunk_info.append((0, i))  # Will always be 0 since we are processing single file at one time
+            chunk_info.append((0, i))                     # Will always be 0 since we are processing single file at one time
         
-        # Assemble all embedded text together
-        final_embedding = np.mean(embeddings, axis=0)
+        final_embedding = np.mean(embeddings, axis=0)     # Assemble all embedded text together
         
         if return_chunks:
             return final_embedding, chunk_info
@@ -173,11 +168,8 @@ class TextEmbedder:
     Returns: List of dicrionary that include embedded data and metadata
     """
     def encode_with_metadata(self, texts: List[dict]) -> List[dict]:
-        # Read the text
-        text_list = [item["text"] for item in texts]
-        
-        # Generate the embedding
-        embeddings = self.encode(text_list)
+        text_list = [item["text"] for item in texts]                # Read the text
+        embeddings = self.encode(text_list)                         # Generate the embedding
         
         # Assemble the embedded data and original data
         results = []
@@ -250,10 +242,10 @@ def main():
     
     # Demo Query
     queries = [
-        "什么是AI",  # Chinese demo case
-        "What is AI",  # English demo case
-        "AI的核心技术",  # CHinese demo case
-        "core technology of AI"  # English Demo Case
+        "什么是AI",                # Chinese demo case
+        "What is AI",             # English demo case
+        "AI的核心技术",            # CHinese demo case
+        "core technology of AI"   # English Demo Case
     ]
     
     print("\nCross-language matching results:")
@@ -262,7 +254,7 @@ def main():
         query_embedding = embedder.encode(query)
         similarities = embedder.compute_similarity(query_embedding, embeddings)
         
-        # 找到最相似的文本
+        # Find 3 highest similarties documents
         top_k = 3
         top_indices = np.argsort(similarities)[-top_k:][::-1]
         
