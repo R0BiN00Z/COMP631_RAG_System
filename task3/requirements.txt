@@ -1,0 +1,23 @@
+# Core dependencies
+torch==2.6.0
+sentence-transformers==4.1.0
+pinecone==6.0.2
+openai==1.75.0
+langchain==0.3.23
+langchain-google-genai==2.1.3
+python-dotenv==1.1.0
+streamlit==1.32.0
+
+# Text processing
+jieba==0.42.1
+numpy==1.26.4
+tqdm==4.67.1
+
+# NLP and ML
+transformers==4.51.3
+huggingface-hub==0.30.2
+scikit-learn==1.6.1
+pandas==2.2.3
+
+# Optional but recommended
+watchdog>=3.0.0  # For better Streamlit performance 
