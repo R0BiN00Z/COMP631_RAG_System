@@ -113,13 +113,12 @@ class ContentProcessor:
         return results
 
     def rerank_results(self, results: List[Dict], query: str) -> List[Dict]:
-        """重新排序结果，考虑多个因素"""
-        seen_titles = set()  # 用于去重的集合
+        seen_titles = set()
         reranked_results = []
         
         for result in sorted(results, key=lambda x: x['score'], reverse=True):
-            if result['title'] not in seen_titles:  # 检查标题是否重复
-                # 计算分数
+            if result['title'] not in seen_titles:  # Check title is duplicad or not
+                # Calculate the score
                 vector_score = result['score'] * 0.6
                 title_score = self._calculate_keyword_match(result['title'], query) * 0.25
                 content_score = self._calculate_keyword_match(result['content'][:1000], query) * 0.15
@@ -130,19 +129,18 @@ class ContentProcessor:
                 result['final_score'] = vector_score + title_score + content_score
                 
                 reranked_results.append(result)
-                seen_titles.add(result['title'])  # 将标题添加到已见集合
+                seen_titles.add(result['title'])  # Adding the title to seened list
         
         return sorted(reranked_results, key=lambda x: x['final_score'], reverse=True)
 
+    # Calculate the similarties with keyword
     def _calculate_keyword_match(self, text: str, query: str) -> float:
-        """计算关键词匹配度"""
         if not text or not query:
             return 0.0
             
         text_lower = text.lower()
         query_words = set(query.lower().split())
         
-        # 计算查询词在文本中的出现比例
         matched_words = sum(1 for word in query_words if word in text_lower)
         return matched_words / len(query_words) if query_words else 0.0
 
@@ -228,7 +226,6 @@ use some emojis to make the response more engaging"""
         return "\n".join(formatted)
 
     def _generate_fallback_response(self, query: str, results: List[Dict]) -> str:
-        # 保持原有的fallback逻辑
         pass
 
     def _get_gpt_response(self, prompt: str):
@@ -243,55 +240,45 @@ use some emojis to make the response more engaging"""
 
 # ============= Main Function =============
 def main():
-    # 参数解析
     parser = argparse.ArgumentParser(description='RAG Agent for Tourism Information')
     parser.add_argument('--query', type=str, required=True, help='Search query')
     args = parser.parse_args()
 
-    # 初始化配置和组件
     config = Config()
     index = Initializer.init_pinecone(config)
     openai_client = Initializer.init_openai(config)
     summarizer = Initializer.init_summarizer(config)
 
-    # 初始化各个处理器
     search_engine = SearchEngine(index, TextEmbedder())
     content_processor = ContentProcessor(summarizer)
     query_translator = QueryTranslator(openai_client)
     response_generator = ResponseGenerator(openai_client)
 
-    # 查询翻译
     queries = query_translator.translate_query(args.query)
     print(f"Chinese query: {queries['zh']}")
     print(f"English query: {queries['en']}")
 
-    # 加载数据
     merged_data = DataLoader.load_merged_data('merged_data.json')
 
-    # 搜索和处理结果
     zh_results = search_engine.search_pinecone(queries['zh'])
     en_results = search_engine.search_pinecone(queries['en'])
 
-    # 处理内容
     processed_zh = content_processor.process_results(zh_results, merged_data)
     processed_en = content_processor.process_results(en_results, merged_data)
- # 确保查询是字符串类型
+
     zh_query = str(queries.get('zh', args.query))
     en_query = str(queries.get('en', args.query))
     
     print(f"Chinese query: {zh_query}")
     print(f"English query: {en_query}")
-    # 重新排序结果
+
     reranked_zh = content_processor.rerank_results(processed_zh, queries['zh'])
     reranked_en = content_processor.rerank_results(processed_en, queries['en'])
 
-    # 取排序后的前10条结果
     final_results = reranked_zh[:5] + reranked_en[:5]
 
-    # 为英文内容生成摘要
     final_results = content_processor.summarize_english_content(final_results)
 
-    # 生成响应
     response = response_generator.generate_response(args.query, final_results)
     print("\nGenerated response:")
     print(response)
