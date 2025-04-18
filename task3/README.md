@@ -70,7 +70,7 @@ streamlit run app.py
 
 ## License
 
-[Your License Here]
+Apache License 2.0
 
 ## Contributing
 
