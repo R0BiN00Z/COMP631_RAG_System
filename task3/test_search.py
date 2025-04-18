@@ -51,8 +51,7 @@ def search(query: str, embeddings_data: list, top_k: int = 5):
             pbar.update(1)
     pbar.close()
     
-    # Return the sorted result
-    return [item[1] for item in sorted(top_results, reverse=True)]
+    return [item[1] for item in sorted(top_results, reverse=True)]            # Return the sorted result
 
 def main():
     embeddings_data = load_embeddings()
