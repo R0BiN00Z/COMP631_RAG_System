@@ -3,8 +3,7 @@ import os
 from dotenv import load_dotenv
 
 def test_rag_agent():
-    # Load environment variables
-    load_dotenv()
+    load_dotenv()                    # Load environment variables
     
     # Test Pinecone initialization
     print("Initializing Pinecone...")
