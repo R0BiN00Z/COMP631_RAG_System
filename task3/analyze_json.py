@@ -2,8 +2,8 @@ import json
 import sys
 import re
 
+# Check whether the text contain Chinese character or not
 def is_chinese(text):
-    # Check whether the text contain Chinese character or not
     return bool(re.search(r'[\u4e00-\u9fff]', text))
 
 def analyze_json_file(file_path):
@@ -12,8 +12,7 @@ def analyze_json_file(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Check the data Type
-        print(f"Data Type: {type(data)}")
+        print(f"Data Type: {type(data)}")        # Check the data Type
         
         # If the data type is any sort of list, show the list length and the first element in that list
         if isinstance(data, list):
