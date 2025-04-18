@@ -10,18 +10,19 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 
-# 加载环境变量
+# Load the Environment
 load_dotenv()
 
 class TextSummarizer:
+    """
+    Initialize text summarizer
+    Args:
+        api_key: Gemini API key, if None will get from environment variable
+        max_workers: Maximum number of threads for parallel processing
+        batch_size: Batch size for processing
+    Return: N/A
+    """
     def __init__(self, api_key: str = None, max_workers: int = 4, batch_size: int = 5):
-        """Initialize text summarizer
-        
-        Args:
-            api_key: Gemini API key, if None will get from environment variable
-            max_workers: Maximum number of threads for parallel processing
-            batch_size: Batch size for processing
-        """
         if api_key is None:
             api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -31,9 +32,9 @@ class TextSummarizer:
             model="gemini-2.0-flash-lite",
             google_api_key=api_key,
             temperature=0,
-            max_output_tokens=2048,  # Increase output length limit
-            top_p=0.8,  # Adjust sampling parameter
-            top_k=40    # Adjust sampling parameter
+            max_output_tokens=2048,    # Increase output length limit
+            top_p=0.8,                 # Adjust sampling parameter
+            top_k=40                   # Adjust sampling parameter
         )
         
         self.max_workers = max_workers
@@ -41,8 +42,8 @@ class TextSummarizer:
         
         # Initialize text splitter with adjusted chunk size and overlap
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000,  # Reduce chunk size
-            chunk_overlap=100,  # Reduce overlap
+            chunk_size=2000,      # Reduce chunk size
+            chunk_overlap=100,    # Reduce overlap
             length_function=len,
             separators=["\n\n", "\n", "。", "！", "？", "；", "，", "、", " ", ""]  # Optimize separators
         )
@@ -61,19 +62,13 @@ Key information:"""
 Combined summary:"""
         self.reduce_prompt = PromptTemplate.from_template(reduce_template)
         
-        # 创建 Map 和 Reduce 链
-        self.map_chain = (
-            RunnablePassthrough() | self.map_prompt | self.llm
-        )
-        
-        self.reduce_chain = (
-            RunnablePassthrough() | self.reduce_prompt | self.llm
-        )
+        # Create Map and Reduce Chain
+        self.map_chain = (RunnablePassthrough() | self.map_prompt | self.llm)
+        self.reduce_chain = (RunnablePassthrough() | self.reduce_prompt | self.llm)
 
     def _process_batch(self, batch: List[Document]) -> List[str]:
-        """处理一批文本块"""
         try:
-            # 并行处理批次中的每个文档
+            # Process all documents in one batch in parallel
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = [
                     executor.submit(
@@ -88,19 +83,15 @@ Combined summary:"""
             return []
 
     def _batch_documents(self, docs: List[Document]) -> List[List[Document]]:
-        """将文档列表分成批次"""
         it = iter(docs)
         return list(iter(lambda: list(islice(it, self.batch_size)), []))
 
+    """
+    Summary the long text
+    Args: text: Input long text
+    Returns: str: Summary Result
+    """
     def summarize(self, text: str) -> str:
-        """对长文本进行摘要
-        
-        Args:
-            text: 需要摘要的长文本
-            
-        Returns:
-            str: 摘要结果
-        """
         # Split text
         docs = self.text_splitter.create_documents([text])
         print(f"Text split into {len(docs)} chunks")
@@ -124,11 +115,11 @@ Combined summary:"""
         return final_summary
 
 def main():
-    # 示例用法
+    # Sample Run, each batch contain 5 documents and 4 threads were being assigned to this task
     api_key = os.getenv("GEMINI_API_KEY")
-    summarizer = TextSummarizer(api_key, max_workers=4, batch_size=5)  # 使用4个线程并行处理，每批5个文档
+    summarizer = TextSummarizer(api_key, max_workers=4, batch_size=5)
     
-    # 从 merged_data.json 读取 Chengdu 的内容
+    # Read data from merged_data.json
     with open('merged_data.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
         chengdu_content = None
