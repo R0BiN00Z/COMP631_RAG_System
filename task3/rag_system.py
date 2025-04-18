@@ -33,8 +33,7 @@ class RAGSystem:
         self.collection_name = collection_name
         self.embeddings_file = embeddings_file
         
-        # Connect to the Local server
-        connections.connect(host=milvus_host, port=milvus_port)
+        connections.connect(host=milvus_host, port=milvus_port)            # Connect to the Local server
         
         # Initialize BM25
         self.bm25 = None
@@ -80,8 +79,7 @@ class RAGSystem:
                 {"name": "content", "dtype": "VARCHAR", "max_length": 65535}
             ]
         }
-        # Create the collection
-        collection = Collection(name=self.collection_name, schema=schema)
+        collection = Collection(name=self.collection_name, schema=schema)            # Create the collection
         
         # Creating the index
         index_params = {
@@ -150,8 +148,7 @@ class RAGSystem:
                     "score": hit.score
                 })
         
-        # Merge both result come back
-        bm25_results = [self.documents[idx] for idx in bm25_indices]
+        bm25_results = [self.documents[idx] for idx in bm25_indices]        # Merge both result come back
         
         all_results = []
         seen = set()
