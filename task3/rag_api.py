@@ -3,19 +3,19 @@ from rag_agent import Initializer, Config, SearchEngine, TextEmbedder, ContentPr
 
 class RAGAgent:
     def __init__(self):
-        # 初始化所有必要组件
+        # Initialize all elements
         self.config = Config()
         self.index = Initializer.init_pinecone(self.config)
         self.openai_client = Initializer.init_openai(self.config)
         self.summarizer = Initializer.init_summarizer(self.config)
         
-        # 初始化处理器
+        # Initialize processors
         self.search_engine = SearchEngine(self.index, TextEmbedder())
         self.content_processor = ContentProcessor(self.summarizer)
         self.query_translator = QueryTranslator(self.openai_client)
         self.response_generator = ResponseGenerator(self.openai_client)
         
-        # 加载数据
+        # Load Data
         self.merged_data = DataLoader.load_merged_data('merged_data.json')
 
     def get_response(self, query: str) -> str:
