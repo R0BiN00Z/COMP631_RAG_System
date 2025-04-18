@@ -9,23 +9,23 @@ from embedding import TextEmbedder
 import os
 
 class RAGSystem:
+    """
+    Initialize the RAG System    
+    Args:
+        embedding_model_name: Embedding Model Name
+        milvus_host: Milvus Local Server Name
+        milvus_port: Milvus Local Server Port
+        collection_name: Milvus Collection Name
+        embeddings_file: Local File Path to the stored embedded file
+    Return: N/A
+    """
     def __init__(self, 
                  embedding_model_name: str = "BAAI/bge-large-zh",
                  milvus_host: str = "localhost",
                  milvus_port: str = "19530",
                  collection_name: str = "city_data",
                  embeddings_file: str = "embeddings_cache/merged_data_embeddings.json"):
-        """
-        初始化 RAG 系统
-        
-        Args:
-            embedding_model_name: 嵌入模型名称
-            milvus_host: Milvus 服务器主机
-            milvus_port: Milvus 服务器端口
-            collection_name: Milvus 集合名称
-            embeddings_file: 预生成的嵌入向量文件路径
-        """
-        # 初始化文本嵌入器（仅用于查询）
+
         self.embedder = TextEmbedder(model_name=embedding_model_name)
         
         self.milvus_host = milvus_host
@@ -33,24 +33,20 @@ class RAGSystem:
         self.collection_name = collection_name
         self.embeddings_file = embeddings_file
         
-        # 连接 Milvus
+        # Connect to the Local server
         connections.connect(host=milvus_host, port=milvus_port)
         
-        # 初始化 BM25
+        # Initialize BM25
         self.bm25 = None
         self.corpus = []
         self.documents = []
         
     def preprocess_text(self, text: str) -> str:
-        """预处理文本，包括分词和清理"""
-        # 分词
         words = jieba.cut(text)
-        # 过滤停用词和特殊字符
         filtered_words = [word for word in words if len(word.strip()) > 1]
         return " ".join(filtered_words)
     
     def load_embeddings(self):
-        """加载预生成的嵌入向量"""
         print(f"Loading embeddings from {self.embeddings_file}...")
         with open(self.embeddings_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -67,18 +63,15 @@ class RAGSystem:
             self.corpus.append(f"{item['title']} {item['content']}")
             self.embeddings.append(item['embedding'])
         
-        # 初始化 BM25
         tokenized_corpus = [doc.split() for doc in self.corpus]
         self.bm25 = BM25Okapi(tokenized_corpus)
         
         print(f"Loaded {len(self.documents)} documents with embeddings")
     
     def create_milvus_collection(self):
-        """创建 Milvus 集合"""
         if utility.has_collection(self.collection_name):
             utility.drop_collection(self.collection_name)
         
-        # 定义集合模式
         schema = {
             "fields": [
                 {"name": "id", "dtype": "INT64", "is_primary": True},
@@ -87,11 +80,10 @@ class RAGSystem:
                 {"name": "content", "dtype": "VARCHAR", "max_length": 65535}
             ]
         }
-        
-        # 创建集合
+        # Create the collection
         collection = Collection(name=self.collection_name, schema=schema)
         
-        # 创建索引
+        # Creating the index
         index_params = {
             "metric_type": "L2",
             "index_type": "IVF_FLAT",
@@ -102,11 +94,9 @@ class RAGSystem:
         return collection
     
     def index_data(self):
-        """将数据索引到 Milvus"""
         print("Indexing data to Milvus...")
         collection = self.create_milvus_collection()
         
-        # 准备批量插入的数据
         batch_size = 1000
         total_docs = len(self.documents)
         
@@ -114,32 +104,25 @@ class RAGSystem:
             batch_docs = self.documents[i:i+batch_size]
             batch_embeddings = self.embeddings[i:i+batch_size]
             
-            # 准备插入数据
             entities = [
-                list(range(i, i + len(batch_docs))),  # ids
-                batch_embeddings,  # embeddings
-                [doc['title'] for doc in batch_docs],  # titles
+                list(range(i, i + len(batch_docs))),    # ids
+                batch_embeddings,                       # embeddings
+                [doc['title'] for doc in batch_docs],   # titles
                 [doc['content'] for doc in batch_docs]  # contents
             ]
-            
-            # 插入数据
             collection.insert(entities)
         
-        # 加载集合
+        # Load the collection
         collection.load()
         print("Indexing completed!")
     
     def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """搜索相关文档"""
-        # 预处理查询
         processed_query = self.preprocess_text(query)
         
-        # BM25 搜索
         tokenized_query = processed_query.split()
         bm25_scores = self.bm25.get_scores(tokenized_query)
         bm25_indices = np.argsort(bm25_scores)[-top_k:][::-1]
         
-        # 向量搜索
         query_embedding = self.embedder.encode(query)
         collection = Collection(self.collection_name)
         collection.load()
@@ -167,10 +150,9 @@ class RAGSystem:
                     "score": hit.score
                 })
         
-        # 合并 BM25 和向量搜索结果
+        # Merge both result come back
         bm25_results = [self.documents[idx] for idx in bm25_indices]
         
-        # 去重并排序
         all_results = []
         seen = set()
         
@@ -183,14 +165,9 @@ class RAGSystem:
         return all_results[:top_k]
 
 def main():
-    # Initialize the RAG system
-    rag = RAGSystem()
-    
-    # Load the stored embedding file
-    rag.load_embeddings()
-    
-    # Index all data
-    rag.index_data()
+    rag = RAGSystem()                # Initialize the RAG system
+    rag.load_embeddings()            # Load the stored embedding file
+    rag.index_data()                 # Index all data
     
     # Sample Search
     while True:
